@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ウィキで6歩</title>
+<meta name="description" content="Wikipediaのリンクを6回たどるだけで、お題の記事にたどり着けるか？毎日かわるお題に挑戦しよう。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fbfaf6; --ink:#24221f; --sub:#76706a; --line:#e6e1d8; --card:#ffffff;
+  --link:#2f5bd3; --linkbg:#eaf0ff; --goal:#1f9d55; --goalbg:#e5f6ec; --warn:#e0543a; --step:#f2b53a;
+  --round:'Zen Maru Gothic',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+input{font:inherit}
+[hidden]{display:none!important}
+
+/* ===== スタート画面 ===== */
+.screen{min-height:100%;display:flex;flex-direction:column;align-items:center;padding:28px 18px 40px;gap:18px;max-width:520px;margin:0 auto}
+.logo{font-family:var(--round);font-weight:900;font-size:40px;line-height:1.1;text-align:center;letter-spacing:.02em}
+.logo .six{display:inline-block;color:#fff;background:var(--ink);border-radius:14px;padding:0 12px;margin:0 2px;transform:rotate(-4deg)}
+.tag{font-family:var(--round);color:var(--sub);text-align:center;font-size:15px;line-height:1.6}
+.card{width:100%;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 2px 0 var(--line)}
+.card h2{font-family:var(--round);font-size:14px;color:var(--sub);font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between}
+.pair{display:flex;align-items:center;gap:8px;font-family:var(--round);font-weight:900;font-size:22px;line-height:1.3;flex-wrap:wrap}
+.pair .arrow{color:var(--sub);font-size:18px}
+.pair .g{color:var(--goal)}
+.btn{display:block;width:100%;padding:14px;border-radius:14px;font-family:var(--round);font-weight:900;font-size:17px;text-align:center;transition:transform .08s}
+.btn:active{transform:translateY(2px)}
+.btn.main{background:var(--ink);color:#fff;margin-top:14px;box-shadow:0 4px 0 #000}
+.btn.sub{background:#efece5;margin-top:10px}
+.btn.small{display:inline-block;width:auto;padding:10px 16px;font-size:15px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.mode{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 12px;text-align:left;box-shadow:0 2px 0 var(--line)}
+.mode b{display:block;font-family:var(--round);font-size:16px}
+.mode span{font-size:12px;color:var(--sub)}
+.rules{font-size:14px;line-height:1.7;color:var(--sub)}
+.rules li{margin-left:1.2em}
+.field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.field label{font-size:13px;color:var(--sub)}
+.field input{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:16px}
+.msg{font-size:13px;color:var(--warn);margin-top:8px;min-height:1em}
+.linkbox{word-break:break-all;background:#f3f1ec;border-radius:10px;padding:10px;font-size:13px;margin-top:10px;user-select:all}
+.foot{font-size:11px;color:var(--sub);text-align:center;line-height:1.6}
+.foot a{color:var(--sub)}
+.done-badge{font-size:12px;background:var(--goalbg);color:var(--goal);border-radius:99px;padding:2px 10px}
+
+/* ===== プレイ画面 ===== */
+#play{height:100%;display:flex;flex-direction:column}
+.top{background:var(--card);border-bottom:1px solid var(--line);padding:10px 14px 10px;display:flex;flex-direction:column;gap:8px;position:relative;z-index:2}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.goal-chip{display:flex;align-items:center;gap:6px;background:var(--goalbg);color:var(--goal);border-radius:99px;padding:6px 12px 6px 8px;font-family:var(--round);font-weight:900;font-size:15px;max-width:70%;overflow:hidden}
+.goal-chip .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;color:var(--sub);font-size:14px}
+.steps{display:flex;gap:6px;align-items:center}
+.steps i{width:100%;flex:1;height:8px;border-radius:99px;background:#ebe7df;transition:background .25s}
+.steps i.used{background:var(--step)}
+.steps i.last{background:var(--warn)}
+.steps .left{font-family:var(--round);font-weight:900;font-size:13px;white-space:nowrap;margin-left:4px}
+.trail{display:flex;gap:4px;overflow-x:auto;font-size:12px;color:var(--sub);white-space:nowrap;scrollbar-width:none}
+.trail::-webkit-scrollbar{display:none}
+.trail span{background:#f3f1ec;border-radius:99px;padding:2px 9px}
+.trail span.cur{background:var(--ink);color:#fff}
+
+#article{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 110px;line-height:1.85;font-size:16px}
+#article h1.atitle{font-family:var(--round);font-size:26px;line-height:1.3;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+#article h2{font-size:19px;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+#article h3,#article h4{font-size:16px;margin:16px 0 6px}
+#article p{margin:0 0 12px}
+#article ul,#article ol{margin:0 0 12px 1.4em}
+#article img{max-width:100%;height:auto;border-radius:6px}
+#article figure,#article .thumb{margin:10px 0;font-size:13px;color:var(--sub)}
+#article .tablewrap{overflow-x:auto;margin:10px 0}
+#article table{border-collapse:collapse;font-size:13px;line-height:1.5}
+#article td,#article th{border:1px solid var(--line);padding:4px 6px;vertical-align:top}
+#article .infobox{float:none!important;width:100%!important}
+#article .wl{color:var(--link);background:var(--linkbg);border-radius:4px;padding:0 2px;cursor:pointer;text-decoration:none;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+#article .wl:active{background:#cddcff}
+#article .wl.isgoal{}
+#article .src{margin-top:24px;font-size:12px;color:var(--sub);border-top:1px solid var(--line);padding-top:10px}
+#article .src a{color:var(--sub)}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px 0;color:var(--sub);font-family:var(--round)}
+.loading::before{content:'';width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--ink);border-radius:50%;margin-right:10px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.bottom{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--paper) 30%);z-index:3}
+.bottom button{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:11px 15px;font-family:var(--round);font-weight:700;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.bottom button:disabled{opacity:.4}
+.bottom .find{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ===== シート ===== */
+.sheet-bg{position:fixed;inset:0;background:rgba(20,18,15,.45);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));animation:up .2s ease-out;max-height:85vh;display:flex;flex-direction:column}
+@keyframes up{from{transform:translateY(40px);opacity:.5}}
+.sheet h3{font-family:var(--round);font-size:15px;color:var(--sub);margin-bottom:6px}
+.sheet .big{font-family:var(--round);font-weight:900;font-size:24px;line-height:1.3;margin-bottom:4px}
+.sheet .note{font-size:13px;color:var(--sub)}
+.sheet .btns{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:16px}
+.goalcard{display:flex;gap:12px;align-items:flex-start;margin-top:8px}
+.goalcard img{width:84px;height:84px;object-fit:cover;border-radius:12px;flex:none;background:#eee}
+.goalcard p{font-size:14px;line-height:1.7;color:#4a4540}
+#findInput{padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;margin:6px 0 10px;width:100%}
+#findList{overflow-y:auto;flex:1;min-height:120px}
+#findList button{display:block;width:100%;text-align:left;padding:11px 6px;border-bottom:1px solid var(--line);font-size:15px}
+#findList button small{color:var(--sub);margin-left:6px}
+#findList .empty{color:var(--sub);font-size:14px;padding:16px 4px}
+
+/* ===== 結果 ===== */
+.result-title{font-family:var(--round);font-weight:900;font-size:30px;text-align:center}
+.result-title.win{color:var(--goal)}
+.result-title.lose{color:var(--warn)}
+.rank{font-family:var(--round);font-weight:900;font-size:18px;text-align:center;border:3px solid currentColor;border-radius:12px;padding:4px 16px;align-self:center;transform:rotate(-3deg)}
+.emoji{font-size:28px;letter-spacing:4px;text-align:center}
+.route{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+.route .node{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-family:var(--round);font-weight:700;font-size:16px;text-align:center;max-width:100%}
+.route .node.s{background:#f3f1ec}
+.route .node.g{background:var(--goalbg);color:var(--goal);border-color:#bfe5cd}
+.route .node.x{background:#fdecea;color:var(--warn);border-color:#f5c6bd}
+.route .ar{color:var(--sub);font-size:14px;line-height:1}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;z-index:20;font-family:var(--round)}
+</style>
+</head>
+<body>
+
+<!-- ===== スタート ===== -->
+<section class="screen" id="home">
+  <div class="logo">ウィキで<span class="six">6</span>歩</div>
+  <p class="tag">Wikipediaは6回リンクをたどれば<br>どこへでも行ける…らしい。本当に？</p>
+
+  <div class="card" id="dailyCard">
+    <h2><span id="dailyLabel">今日のお題</span><span id="dailyDone" class="done-badge" hidden>クリア済み</span></h2>
+    <div class="pair"><span id="dStart"></span><span class="arrow">→</span><span class="g" id="dGoal"></span></div>
+    <button class="btn main" id="playDaily">挑戦する</button>
+  </div>
+
+  <div class="card" id="friendCard" hidden>
+    <h2><span>📮 挑戦状がとどいています</span></h2>
+    <div class="pair"><span id="fStart"></span><span class="arrow">→</span><span class="g" id="fGoal"></span></div>
+    <button class="btn main" id="playFriend">受けて立つ</button>
+  </div>
+
+  <div class="row2">
+    <button class="mode" id="playPick"><b>🎲 おまかせ</b><span>有名な記事どうしのお題</span></button>
+    <button class="mode" id="playRandom"><b>🌀 ランダム</b><span>完全ランダム。激ムズ</span></button>
+  </div>
+  <button class="mode" style="width:100%" id="openMaker"><b>✉️ お題をつくって送る</b><span>友だちに「これ6歩で行ける？」と挑戦状を出す</span></button>
+
+  <div class="card">
+    <h2><span>あそびかた</span></h2>
+    <ul class="rules">
+      <li>スタートの記事から、<b>青いリンク</b>だけをたどってゴールの記事を目指す</li>
+      <li>使えるのは<b>6歩（6回のリンク）</b>まで。「1歩もどる」も1歩使う</li>
+      <li>長い記事は<b>「🔍 リンクをさがす」</b>で記事の中のリンクを検索できる</li>
+      <li>たどり着いた歩数と時間を、ネタバレなしでシェアしよう</li>
+    </ul>
+  </div>
+  <p class="foot">記事の内容は <a href="https://ja.wikipedia.org/" target="_blank" rel="noopener">ウィキペディア日本語版</a> から読み込んでいます（CC BY-SA 4.0）。<br>このゲームは非公式のファン作品で、ウィキメディア財団とは関係ありません。</p>
+</section>
+
+<!-- ===== お題づくり ===== -->
+<section class="screen" id="maker" hidden>
+  <div class="logo" style="font-size:28px">✉️ 挑戦状をつくる</div>
+  <div class="card">
+    <div class="field"><label>スタートの記事名</label><input id="mStart" placeholder="例：たこ焼き" autocomplete="off"></div>
+    <div class="field"><label>ゴールの記事名</label><input id="mGoal" placeholder="例：ブラックホール" autocomplete="off"></div>
+    <div class="msg" id="mMsg"></div>
+    <button class="btn main" id="mMake">挑戦状をつくる</button>
+    <div id="mOut" hidden>
+      <div class="linkbox" id="mLink"></div>
+      <button class="btn sub" id="mCopy">リンクをコピー</button>
+      <button class="btn sub" id="mPlay">自分で試してみる</button>
+    </div>
+  </div>
+  <button class="btn sub" id="mBack" style="max-width:200px">もどる</button>
+</section>
+
+<!-- ===== プレイ ===== -->
+<section id="play" hidden>
+  <div class="top">
+    <div class="top-row">
+      <button class="goal-chip" id="goalChip">🎯 <span class="txt" id="goalName"></span></button>
+      <span class="timer" id="timer">0:00</span>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div class="trail" id="trail"></div>
+  </div>
+  <div id="article"></div>
+  <div class="bottom">
+    <button id="btnBack">↩ 1歩もどる</button>
+    <button class="find" id="btnFind">🔍 リンクをさがす</button>
+    <button id="btnQuit">✕</button>
+  </div>
+</section>
+
+<!-- ===== 結果 ===== -->
+<section class="screen" id="result" hidden>
+  <div class="result-title" id="rTitle"></div>
+  <div class="rank" id="rRank"></div>
+  <div class="emoji" id="rEmoji"></div>
+  <div class="tag" id="rStat"></div>
+  <div class="route" id="rRoute"></div>
+  <div class="card">
+    <button class="btn main" id="rShare">結果をシェア（ネタバレなし）</button>
+    <button class="btn sub" id="rShareRoute">ルートつきでコピー</button>
+    <button class="btn sub" id="rRetry">同じお題でもう一回</button>
+    <button class="btn sub" id="rHome">トップへ</button>
+  </div>
+</section>
+
+<!-- ===== シート ===== -->
+<div class="sheet-bg" id="confirmSheet" hidden>
+  <div class="sheet">
+    <h3>この記事へ進む？</h3>
+    <div class="big" id="cTitle"></div>
+    <div class="note" id="cNote"></div>
+    <div class="btns">
+      <button class="btn sub" id="cNo" style="margin:0">やめる</button>
+      <button class="btn main" id="cYes" style="margin:0">進む</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="goalSheet" hidden>
+  <div class="sheet">
+    <h3 id="gsHead">ゴールはこの記事</h3>
+    <div class="big" id="gsTitle" style="color:var(--goal)"></div>
+    <div class="goalcard"><img id="gsImg" alt="" hidden><p id="gsText"></p></div>
+    <button class="btn main" id="gsOk">わかった</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="findSheet" hidden>
+  <div class="sheet" style="height:80vh">
+    <h3>この記事の中のリンク</h3>
+    <input id="findInput" placeholder="ことばで絞り込む（例：宇宙）" autocomplete="off">
+    <div id="findList"></div>
+    <button class="btn sub" id="findClose">とじる</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="errorSheet" hidden>
+  <div class="sheet">
+    <h3>読み込めませんでした</h3>
+    <div class="note" id="errText" style="font-size:14px;line-height:1.7"></div>
+    <button class="btn main" id="errOk">OK</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ===== 設定 =====
+const MAX_STEPS = 6;
+const API = 'https://ja.wikipedia.org/w/api.php';
+const EPOCH = Date.UTC(2026, 10, 9); // 2026-11-09 が #1
+// 今日のお題・おまかせ用のペア（スタート, ゴール）
+const PAIRS = [
+  ['たこ焼き', 'ブラックホール'], ['富士山', 'ビートルズ'], ['ネコ', '量子力学'], ['ラーメン', '古代エジプト'],
+  ['東京タワー', '恐竜'], ['寿司', '月'], ['野球', 'ヴォルフガング・アマデウス・モーツァルト'], ['新幹線', 'ペンギン'],
+  ['納豆', 'オリンピック'], ['将棋', '火星'], ['カレーライス', '織田信長'], ['コーヒー', '南極大陸'],
+  ['サクラ', 'コンピュータ'], ['忍者', '国際宇宙ステーション'], ['チョコレート', '第二次世界大戦'], ['渋谷', 'カブトムシ'],
+  ['相撲', 'インターネット'], ['温泉', 'ナポレオン・ボナパルト'], ['鉛筆', '太陽'], ['地震', 'ハンバーガー'],
+  ['鹿苑寺', 'サッカー'], ['アイスクリーム', '江戸時代'], ['ジャイアントパンダ', '原子力発電'], ['雪', 'ウィリアム・シェイクスピア'],
+  ['醤油', 'アメリカ合衆国'], ['イヌ', 'ピラミッド'], ['日本酒', 'ロケット'], ['うどん', 'ビッグバン'],
+  ['東京スカイツリー', 'ニワトリ'], ['折り紙', 'ティラノサウルス'], ['カラオケ', 'ローマ帝国'], ['こたつ', 'アインシュタイン'],
+];
+// 進めないリンク（記事以外のページ）
+const NS_BLOCK = /^(ファイル|画像|File|Image|Category|カテゴリ|Help|ヘルプ|Wikipedia|WP|ノート|利用者|利用者‐会話|User|Template|テンプレート|Portal|プロジェクト|特別|Special|MediaWiki|Module|モジュール|Talk|Draft|Wikt|wikt|wiktionary|commons|s|b|q|n|v|en|de|fr|zh)\s*[:：]/i;
+
+// ===== 便利関数 =====
+const $ = id => document.getElementById(id);
+const norm = t => (t || '').replace(/_/g, ' ').trim();
+const fmtTime = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+function show(id) {
+  ['home', 'maker', 'play', 'result'].forEach(s => { $(s).hidden = s !== id; });
+  window.scrollTo(0, 0);
+}
+function toast(text) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = text;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1800);
+}
+function showError(text) { $('errText').textContent = text; $('errorSheet').hidden = false; }
+$('errOk').onclick = () => { $('errorSheet').hidden = true; };
+
+// ===== Wikipedia API =====
+async function api(params) {
+  const u = new URL(API);
+  Object.entries({ ...params, format: 'json', formatversion: '2', origin: '*' }).forEach(([k, v]) => u.searchParams.set(k, v));
+  let r;
+  try { r = await fetch(u); }
+  catch (e) { throw new Error('NET'); }
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+// 記事の正式名・あらすじ・画像
+async function getInfo(title) {
+  const j = await api({ action: 'query', titles: title, redirects: 1, prop: 'extracts|pageimages', exintro: 1, explaintext: 1, exsentences: 3, pithumbsize: 240 });
+  const p = j.query && j.query.pages && j.query.pages[0];
+  if (!p || p.missing || p.invalid) return null;
+  return { title: p.title, extract: p.extract || '', thumb: (p.thumbnail && p.thumbnail.source) || '' };
+}
+// 記事の本文
+async function getPage(title) {
+  const j = await api({ action: 'parse', page: title, redirects: 1, prop: 'text', disableeditsection: 1, disabletoc: 1 });
+  if (j.error) throw new Error('NOPAGE');
+  return { title: j.parse.title, html: j.parse.text };
+}
+async function randomTitles(n) {
+  const j = await api({ action: 'query', list: 'random', rnnamespace: 0, rnlimit: n });
+  return j.query.random.map(r => r.title);
+}
+function netErrorText(e) {
+  if (e && e.message === 'NET') return 'Wikipediaにつながりませんでした。電波を確認してください。\n※Claudeのプレビュー画面など、外部への通信が止められている場所では遊べません。GitHub Pagesなどで公開したURLから開いてください。';
+  return '記事を読み込めませんでした。少し待ってからもう一度ためしてください。';
+}
+
+// ===== 今日のお題 =====
+function todayNo() {
+  const jst = Date.now() + 9 * 3600e3;
+  return Math.floor((jst - EPOCH) / 86400e3) + 1;
+}
+function dailyPair(no) {
+  const i = ((no - 1) % PAIRS.length + PAIRS.length) % PAIRS.length;
+  return PAIRS[(i * 7) % PAIRS.length]; // 並び順をすこし混ぜる
+}
+
+// ===== ゲームの状態 =====
+let game = null;
+let timerId = null;
+let pageLinks = []; // 今の記事のリンク [{title, text}]
+let pending = null; // 確認中のリンク先
+
+function newGame(mode, start, goal, label) {
+  return { mode, start, goal, label, goalInfo: null, path: [], t0: 0, tEnd: 0, over: false, win: false, loading: false };
+}
+const steps = () => Math.max(0, game.path.length - 1);
+
+async function startGame(g) {
+  game = g;
+  show('play');
+  $('article').innerHTML = '<div class="loading">お題を準備中…</div>';
+  renderHud();
+  try {
+    const [si, gi] = await Promise.all([getInfo(game.start), getInfo(game.goal)]);
+    if (!si || !gi) { showError(`「${!si ? game.start : game.goal}」という記事が見つかりませんでした。`); show('home'); return; }
+    if (norm(si.title) === norm(gi.title)) { showError('スタートとゴールが同じ記事です。'); show('home'); return; }
+    game.start = si.title; game.goal = gi.title; game.goalInfo = gi;
+    openGoalSheet(true);
+  } catch (e) { showError(netErrorText(e)); show('home'); return; }
+  await loadPage(game.start, true);
+  game.t0 = Date.now();
+  clearInterval(timerId);
+  timerId = setInterval(() => { if (!game.over) $('timer').textContent = fmtTime(Date.now() - game.t0); }, 500);
+}
+
+async function loadPage(title, isStart) {
+  game.loading = true;
+  if (isStart) $('article').innerHTML = '<div class="loading">読み込み中…</div>';
+  else $('article').style.opacity = '.35';
+  let page;
+  try { page = await getPage(title); }
+  catch (e) {
+    game.loading = false;
+    $('article').style.opacity = '';
+    showError(netErrorText(e));
+    if (!isStart) { game.path.pop(); renderHud(); } // 読み込めなかった歩数は返す
+    else { game.over = true; show('home'); renderHome(); }
+    return;
+  }
+  $('article').style.opacity = '';
+  if (isStart) game.path = [page.title];
+  else game.path[game.path.length - 1] = page.title; // 転送先の正式名にそろえる
+  renderArticle(page);
+  renderHud();
+  game.loading = false;
+  checkEnd();
+}
+
+function go(title) {
+  if (game.over || game.loading || steps() >= MAX_STEPS) return;
+  game.path.push(title);
+  renderHud();
+  loadPage(title, false);
+}
+
+function checkEnd() {
+  const cur = game.path[game.path.length - 1];
+  if (norm(cur) === norm(game.goal)) { finish(true); return; }
+  if (steps() >= MAX_STEPS) { finish(false); }
+}
+
+// ===== 記事の表示 =====
+function renderArticle(page) {
+  const doc = new DOMParser().parseFromString(`<div id="root">${page.html}</div>`, 'text/html');
+  const root = doc.getElementById('root');
+  root.querySelectorAll('style,script,link,.mw-editsection,sup.reference,.mw-references-wrap,ol.references,.reflist,.noprint,.ambox,.metadata,.mw-empty-elt,.navbox-styles,#toc,.toc').forEach(el => el.remove());
+  // 画像
+  root.querySelectorAll('img').forEach(img => {
+    ['src', 'srcset'].forEach(a => { const v = img.getAttribute(a); if (v) img.setAttribute(a, v.replace(/(^|\s|,)\/\//g, '$1https://')); });
+    img.setAttribute('loading', 'lazy');
+  });
+  // 表は横スクロールできるように
+  root.querySelectorAll('table').forEach(t => {
+    if (t.parentElement && t.parentElement.classList.contains('tablewrap')) return;
+    const w = doc.createElement('div'); w.className = 'tablewrap'; t.replaceWith(w); w.appendChild(t);
+  });
+  // リンク
+  const seen = new Map();
+  root.querySelectorAll('a').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    let title = null;
+    if (href.startsWith('/wiki/') && !a.classList.contains('new')) {
+      try { title = norm(decodeURIComponent(href.slice(6).split('#')[0].split('?')[0])); } catch (e) { title = null; }
+      if (title && NS_BLOCK.test(title)) title = null;
+      if (title && norm(title) === norm(page.title)) title = null; // 自分自身へのリンク
+    }
+    if (title) {
+      const s = doc.createElement('span');
+      s.className = 'wl'; s.dataset.t = title; s.setAttribute('role', 'button');
+      s.innerHTML = a.innerHTML;
+      a.replaceWith(s);
+      const text = s.textContent.trim();
+      if (!seen.has(title)) seen.set(title, text || title);
+    } else {
+      const s = doc.createElement('span'); s.innerHTML = a.innerHTML; a.replaceWith(s);
+    }
+  });
+  pageLinks = [...seen.entries()].map(([title, text]) => ({ title, text }));
+
+  const art = $('article');
+  art.innerHTML = '';
+  const h = document.createElement('h1'); h.className = 'atitle'; h.textContent = page.title; art.appendChild(h);
+  art.appendChild(document.importNode(root, true));
+  const src = document.createElement('div'); src.className = 'src';
+  const url = 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(page.title.replace(/ /g, '_'));
+  src.innerHTML = `出典：<a href="${url}" target="_blank" rel="noopener">ウィキペディア「${escapeHtml(page.title)}」</a>（CC BY-SA 4.0）`;
+  art.appendChild(src);
+  art.scrollTop = 0;
+}
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+$('article').addEventListener('click', e => {
+  const s = e.target.closest('.wl'); if (!s) return;
+  askGo(s.dataset.t);
+});
+
+// ===== 画面上部 =====
+function renderHud() {
+  $('goalName').textContent = game.goal;
+  const used = steps();
+  const left = MAX_STEPS - used;
+  let html = '';
+  for (let i = 0; i < MAX_STEPS; i++) html += `<i class="${i < used ? (left <= 1 ? 'used last' : 'used') : ''}"></i>`;
+  html += `<span class="left">のこり${left}歩</span>`;
+  $('steps').innerHTML = html;
+  $('trail').innerHTML = game.path.map((t, i) => `<span class="${i === game.path.length - 1 ? 'cur' : ''}">${escapeHtml(t)}</span>`).join('');
+  const tr = $('trail'); tr.scrollLeft = tr.scrollWidth;
+  $('btnBack').disabled = game.path.length < 2 || used >= MAX_STEPS;
+}
+
+// ===== 進む確認 =====
+function askGo(title) {
+  if (game.over || game.loading) return;
+  pending = title;
+  const left = MAX_STEPS - steps() - 1;
+  $('cTitle').textContent = title;
+  $('cNote').textContent = left > 0 ? `進むと のこり${left}歩` : 'これが最後の1歩！ ゴールじゃなければ終了です';
+  $('cNote').style.color = left > 0 ? '' : 'var(--warn)';
+  $('confirmSheet').hidden = false;
+}
+$('cNo').onclick = () => { $('confirmSheet').hidden = true; pending = null; };
+$('cYes').onclick = () => { $('confirmSheet').hidden = true; if (pending) go(pending); pending = null; };
+$('confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet') $('cNo').onclick(); });
+
+// ===== ゴールの説明 =====
+function openGoalSheet(first) {
+  const gi = game.goalInfo; if (!gi) return;
+  $('gsHead').textContent = first ? `「${game.start}」からスタート。ゴールはこの記事` : 'ゴールはこの記事';
+  $('gsTitle').textContent = gi.title;
+  $('gsText').textContent = gi.extract || '（説明文がありません）';
+  if (gi.thumb) { $('gsImg').src = gi.thumb; $('gsImg').hidden = false; } else $('gsImg').hidden = true;
+  $('gsOk').textContent = first ? 'スタート！' : 'わかった';
+  $('goalSheet').hidden = false;
+}
+$('goalChip').onclick = () => openGoalSheet(false);
+$('gsOk').onclick = () => { $('goalSheet').hidden = true; };
+
+// ===== リンク検索 =====
+function renderFind() {
+  const q = $('findInput').value.trim().toLowerCase();
+  const list = pageLinks.filter(l => !q || l.title.toLowerCase().includes(q) || l.text.toLowerCase().includes(q));
+  const box = $('findList');
+  if (!list.length) { box.innerHTML = `<div class="empty">${q ? '見つかりませんでした' : 'この記事にはリンクがありません'}</div>`; return; }
+  box.innerHTML = list.slice(0, 300).map(l => {
+    const sub = l.text !== l.title ? `<small>（${escapeHtml(l.text)}）</small>` : '';
+    return `<button data-t="${escapeHtml(l.title)}">${escapeHtml(l.title)}${sub}</button>`;
+  }).join('') + (list.length > 300 ? `<div class="empty">ほか${list.length - 300}件。ことばで絞り込んでください</div>` : '');
+}
+$('btnFind').onclick = () => { if (!game || game.loading) return; $('findInput').value = ''; renderFind(); $('findSheet').hidden = false; };
+$('findInput').addEventListener('input', renderFind);
+$('findList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  $('findSheet').hidden = true; askGo(b.dataset.t);
+});
+$('findClose').onclick = () => { $('findSheet').hidden = true; };
+
+// ===== もどる・やめる =====
+$('btnBack').onclick = () => {
+  if (game.path.length < 2) return;
+  askGo(game.path[game.path.length - 2]);
+};
+$('btnQuit').onclick = () => {
+  game.over = true; clearInterval(timerId); show('home'); renderHome();
+};
+
+// ===== 結果 =====
+const RANKS = { 1: '奇跡の1歩', 2: '神ルート', 3: '天才', 4: '達人', 5: 'なかなか', 6: 'ギリギリセーフ' };
+function emojiLine(g) {
+  const n = g.path.length - 1;
+  let s = '';
+  for (let i = 0; i < MAX_STEPS; i++) {
+    if (g.win) s += i < n - 1 ? '🟦' : i === n - 1 ? '🟩' : '⬜';
+    else s += '🟥';
+  }
+  return s;
+}
+function finish(win) {
+  game.over = true; game.win = win; game.tEnd = Date.now();
+  clearInterval(timerId);
+  const n = steps();
+  const time = fmtTime(game.tEnd - game.t0);
+  if (game.mode === 'daily') store.set('wiki6-daily-' + game.label, { win, path: game.path, time, start: game.start, goal: game.goal });
+  setTimeout(() => renderResult(game), win ? 350 : 600);
+}
+function renderResult(g) {
+  const n = g.path.length - 1;
+  const time = g.timeText || fmtTime(g.tEnd - g.t0);
+  $('rTitle').textContent = g.win ? 'たどり着いた！' : '6歩では届かなかった…';
+  $('rTitle').className = 'result-title ' + (g.win ? 'win' : 'lose');
+  $('rRank').textContent = g.win ? RANKS[n] : 'また挑戦しよう';
+  $('rRank').style.color = g.win ? 'var(--goal)' : 'var(--warn)';
+  $('rEmoji').textContent = emojiLine(g);
+  $('rStat').textContent = g.win ? `${n}歩 ・ ${time}` : `ゴール：${g.goal}`;
+  let html = '';
+  g.path.forEach((t, i) => {
+    const cls = i === 0 ? 's' : (i === g.path.length - 1 ? (g.win ? 'g' : 'x') : '');
+    if (i) html += '<div class="ar">↓</div>';
+    html += `<div class="node ${cls}">${escapeHtml(t)}</div>`;
+  });
+  if (!g.win) html += `<div class="ar">⋯</div><div class="node g">🎯 ${escapeHtml(g.goal)}</div>`;
+  $('rRoute').innerHTML = html;
+  $('rRetry').hidden = g.mode === 'daily';
+  show('result');
+}
+function shareUrl(g) {
+  const base = location.origin + location.pathname;
+  if (g.mode === 'daily') return base;
+  return `${base}?s=${encodeURIComponent(g.start)}&g=${encodeURIComponent(g.goal)}`;
+}
+function shareText(g, withRoute) {
+  const n = g.path.length - 1;
+  const head = g.mode === 'daily' ? `ウィキで6歩 #${g.label}` : 'ウィキで6歩 チャレンジ';
+  const res = g.win ? `${n}歩でゴール ⏱${g.timeText || fmtTime(g.tEnd - g.t0)}` : '6歩では届かず…';
+  let s = `${head}\n${g.start} → ${g.goal}\n${emojiLine(g)}\n${res}`;
+  if (withRoute) s += `\n\n【ルート】\n${g.path.join(' → ')}`;
+  return s;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast('コピーしました'); }
+  catch (e) { showError('コピーできませんでした。下の文を長押しでコピーしてください。\n\n' + text); }
+}
+$('rShare').onclick = async () => {
+  const text = shareText(game, false), url = shareUrl(game);
+  if (navigator.share) { try { await navigator.share({ text, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  copyText(text + '\n' + url);
+};
+$('rShareRoute').onclick = () => copyText(shareText(game, true) + '\n' + shareUrl(game));
+$('rRetry').onclick = () => startGame(newGame(game.mode, game.start, game.goal, game.label));
+$('rHome').onclick = () => { show('home'); renderHome(); };
+
+// ===== トップ =====
+function renderHome() {
+  const no = todayNo();
+  const [s, g] = dailyPair(no);
+  $('dailyLabel').textContent = `今日のお題 #${no}`;
+  $('dStart').textContent = s; $('dGoal').textContent = g;
+  const rec = store.get('wiki6-daily-' + no);
+  $('dailyDone').hidden = !rec;
+  $('dailyDone').textContent = rec ? (rec.win ? `クリア ${rec.path.length - 1}歩` : '挑戦済み') : '';
+  $('playDaily').textContent = rec ? '結果を見る' : '挑戦する';
+}
+$('playDaily').onclick = () => {
+  const no = todayNo();
+  const rec = store.get('wiki6-daily-' + no);
+  if (rec) {
+    game = { mode: 'daily', label: no, start: rec.start, goal: rec.goal, path: rec.path, win: rec.win, timeText: rec.time, over: true };
+    renderResult(game); return;
+  }
+  const [s, g] = dailyPair(no);
+  startGame(newGame('daily', s, g, no));
+};
+$('playPick').onclick = () => {
+  const [s, g] = PAIRS[Math.floor(Math.random() * PAIRS.length)];
+  startGame(newGame('pick', s, g));
+};
+$('playRandom').onclick = async () => {
+  try {
+    const [s, g] = await randomTitles(2);
+    startGame(newGame('random', s, g));
+  } catch (e) { showError(netErrorText(e)); }
+};
+
+// 挑戦状
+const params = new URLSearchParams(location.search);
+const fS = params.get('s'), fG = params.get('g');
+if (fS && fG) {
+  $('friendCard').hidden = false;
+  $('fStart').textContent = fS; $('fGoal').textContent = fG;
+  $('playFriend').onclick = () => startGame(newGame('friend', fS, fG));
+}
+
+// お題づくり
+$('openMaker').onclick = () => { show('maker'); $('mOut').hidden = true; $('mMsg').textContent = ''; };
+$('mBack').onclick = () => { show('home'); renderHome(); };
+let made = null;
+$('mMake').onclick = async () => {
+  const s = $('mStart').value.trim(), g = $('mGoal').value.trim();
+  if (!s || !g) { $('mMsg').textContent = '両方入力してください'; return; }
+  $('mMsg').textContent = '記事を確認中…'; $('mMsg').style.color = 'var(--sub)';
+  try {
+    const [si, gi] = await Promise.all([getInfo(s), getInfo(g)]);
+    $('mMsg').style.color = '';
+    if (!si) { $('mMsg').textContent = `「${s}」という記事が見つかりません`; return; }
+    if (!gi) { $('mMsg').textContent = `「${g}」という記事が見つかりません`; return; }
+    if (norm(si.title) === norm(gi.title)) { $('mMsg').textContent = 'スタートとゴールが同じ記事です'; return; }
+    $('mMsg').textContent = '';
+    made = { start: si.title, goal: gi.title };
+    $('mLink').textContent = shareUrl({ mode: 'friend', ...made });
+    $('mOut').hidden = false;
+  } catch (e) { $('mMsg').style.color = ''; $('mMsg').textContent = '通信に失敗しました'; }
+};
+$('mCopy').onclick = () => copyText(`ウィキで6歩の挑戦状\n「${made.start}」から「${made.goal}」まで、6歩で行ける？\n${$('mLink').textContent}`);
+$('mPlay').onclick = () => startGame(newGame('friend', made.start, made.goal));
+
+renderHome();
+window.__wiki6 = { get game() { return game; }, PAIRS, dailyPair, todayNo };
+})();
+</script>
+</body>
+</html>

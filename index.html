@@ -83,6 +83,15 @@ input{font:inherit}
 /* 画像の枠に幅が直接書かれていて画面からはみ出すので、画面幅までにおさえる */
 #article .thumbinner,#article .thumb,#article .tsingle,#article .multiimageinner{width:auto!important;max-width:100%!important;float:none!important}
 #article .trow{flex-wrap:wrap;max-width:100%}
+/* 折りたたんだリンク表 */
+#article details.navfold{border:1px solid var(--line);border-radius:12px;background:var(--card);margin:8px 0;overflow:hidden}
+#article details.navfold>summary{padding:11px 12px;font-family:var(--round);font-weight:700;font-size:14px;line-height:1.4;cursor:pointer;list-style:none;display:flex;gap:8px;align-items:baseline}
+#article details.navfold>summary::-webkit-details-marker{display:none}
+#article details.navfold>summary::after{content:'▼';margin-left:auto;font-size:11px;color:var(--sub)}
+#article details.navfold[open]>summary::after{content:'▲'}
+#article details.navfold>summary small{color:var(--sub);font-weight:500;font-size:12px;white-space:nowrap}
+#article details.navfold>:not(summary){padding:0 8px 8px}
+#article .NavContent{display:block!important}
 #article .wl{color:var(--link);background:var(--linkbg);border-radius:4px;padding:0 2px;cursor:pointer;text-decoration:none;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 #article .wl:active{background:#cddcff}
 #article .wl.isgoal{}
@@ -414,6 +423,20 @@ function renderArticle(page) {
   root.querySelectorAll('img').forEach(img => {
     ['src', 'srcset'].forEach(a => { const v = img.getAttribute(a); if (v) img.setAttribute(a, v.replace(/(^|\s|,)\/\//g, '$1https://')); });
     img.setAttribute('loading', 'lazy');
+  });
+  // 記事の下の大きなリンク表（ナビゲーションボックス）は、スマホだと何十画面分にもなるので折りたたむ。
+  // 消すとリンクが減って難しくなるので、消さずに「タップで開く」形にする
+  root.querySelectorAll('.navbox .navbar').forEach(el => el.remove()); // 「表示・編集」の小さなリンク
+  root.querySelectorAll('.navbox, .NavFrame').forEach(nb => {
+    if (nb.parentElement.closest('.navbox, .NavFrame, .navfold')) return; // 入れ子になっている内側の表はそのまま
+    const head = nb.querySelector('.navbox-title, .NavHead');
+    const name = (head ? head.textContent : '').replace(/\s+/g, ' ').trim() || '関連記事';
+    const n = nb.querySelectorAll('a[href^="/wiki/"]').length;
+    const d = doc.createElement('details'); d.className = 'navfold';
+    const sm = doc.createElement('summary');
+    sm.textContent = `📚 ${name}`;
+    const cnt = doc.createElement('small'); cnt.textContent = `リンク${n}個`; sm.appendChild(cnt);
+    nb.replaceWith(d); d.append(sm, nb);
   });
   // 表は横スクロールできるように
   root.querySelectorAll('table').forEach(t => {

@@ -12,6 +12,8 @@
 //   転送  … 別の名前に転送される。→ の右側の正式名に直すとよい
 //   曖昧  … 曖昧さ回避ページ（同じ名前のものの一覧ページ）。別の記事名にする
 //   なし  … 記事が見つからない。差し替える
+//   簡単すぎ … お題のスタートの記事にゴールへのリンクがあり、1歩で着いてしまう。差し替える
+//   （「ランダム」の組み合わせは、遊ぶときにゲームの中で同じ確認をして選び直している）
 
 import { readFileSync } from 'node:fs';
 
@@ -84,6 +86,30 @@ for (const t of titles) {
   const line = res.status === 'OK' ? `OK    ${t}` : `${res.status}  ${t}${res.title ? ' → ' + res.title : ''}`;
   console.log(line);
   if (res.status !== 'OK') bad.push(line);
+}
+
+// お題が簡単すぎないか：スタートの記事にゴールへの直接リンク（転送ページへのリンクも含む）があると1歩で着いてしまう
+// 組ごとに2〜4回問い合わせるので、1組ごとに2秒あける
+async function isOneStep(start, goal) {
+  const r = await api({ action: 'query', titles: goal, redirects: 1, prop: 'redirects', rdnamespace: 0, rdlimit: 'max' });
+  const p = r.query.pages[0];
+  if (!p || p.missing) return false;
+  const names = [p.title, ...(p.redirects || []).map(x => x.title)];
+  for (let i = 0; i < names.length && i < 150; i += 50) {
+    const j = await api({ action: 'query', titles: start, redirects: 1, prop: 'links', plnamespace: 0, pllimit: 'max', pltitles: names.slice(i, i + 50).join('|') });
+    const s = j.query.pages[0];
+    if (s && s.links && s.links.length) return true;
+  }
+  return false;
+}
+console.log(`\nお題${PAIRS.length}組が簡単すぎないか（1歩で着かないか）調べます`);
+for (const [s, g] of PAIRS) {
+  if (results[s].status !== 'OK' || results[g].status !== 'OK') continue;
+  if (await isOneStep(s, g)) {
+    const line = `簡単すぎ  ${s} → ${g}（1歩で着く）`;
+    console.log(line); bad.push(line);
+  }
+  await sleep(WAIT_MS);
 }
 console.log('\n' + (bad.length ? `直したほうがいいもの：${bad.length}件\n` + bad.join('\n') : 'すべてOK！'));
 process.exit(bad.length ? 1 : 0);

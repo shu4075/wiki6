@@ -280,7 +280,7 @@ const PAIRS = [
   ['サクラ', 'コンピュータ'], ['忍者', '国際宇宙ステーション'], ['チョコレート', '第二次世界大戦'], ['渋谷', 'カブトムシ'],
   ['相撲', 'インターネット'], ['温泉', 'ナポレオン・ボナパルト'], ['鉛筆', '太陽'], ['地震', 'ハンバーガー'],
   ['鹿苑寺', 'サッカー'], ['アイスクリーム', '江戸時代'], ['ジャイアントパンダ', '原子力発電'], ['雪', 'ウィリアム・シェイクスピア'],
-  ['醤油', 'アメリカ合衆国'], ['イヌ', 'ピラミッド'], ['日本酒', 'ロケット'], ['うどん', 'ビッグバン'],
+  ['醤油', 'エベレスト'], ['イヌ', 'ピラミッド'], ['日本酒', 'ロケット'], ['うどん', 'ビッグバン'],
   ['東京スカイツリー', 'ニワトリ'], ['折り紙', 'ティラノサウルス'], ['カラオケ', 'ローマ帝国'], ['炬燵', 'アルベルト・アインシュタイン'],
 ];
 // 「ランダム」用の、誰でも知っている言葉。この中から2つ選んでスタートとゴールにする
@@ -354,6 +354,20 @@ async function getPage(title) {
   const j = await api({ action: 'parse', page: title, redirects: 1, prop: 'text', disableeditsection: 1, disabletoc: 1, useformat: 'desktop' });
   if (j.error) throw new Error('NOPAGE');
   return { title: j.parse.title, html: j.parse.text };
+}
+// スタートの記事に、ゴールへの直接リンクがあるか（＝1歩で着いてしまう簡単すぎるお題か）
+// ゴールへの転送ページ（例：「モーツァルト」）へのリンクも、ゴールへのリンクとして数える
+async function isOneStep(start, goal) {
+  const r = await api({ action: 'query', titles: goal, redirects: 1, prop: 'redirects', rdnamespace: 0, rdlimit: 'max' });
+  const p = r.query.pages[0];
+  if (!p || p.missing) return false;
+  const names = [p.title, ...(p.redirects || []).map(x => x.title)];
+  for (let i = 0; i < names.length && i < 150; i += 50) { // 50件ずつ聞く（転送が多い記事でも最大3回）
+    const j = await api({ action: 'query', titles: start, redirects: 1, prop: 'links', plnamespace: 0, pllimit: 'max', pltitles: names.slice(i, i + 50).join('|') });
+    const s = j.query.pages[0];
+    if (s && s.links && s.links.length) return true;
+  }
+  return false;
 }
 function netErrorText(e) {
   if (e && e.message === 'NET') return 'Wikipediaにつながりませんでした。電波を確認してください。\n※Claudeのプレビュー画面など、外部への通信が止められている場所では遊べません。GitHub Pagesなどで公開したURLから開いてください。';
@@ -672,11 +686,22 @@ $('playPick').onclick = () => {
   const [s, g] = PAIRS[Math.floor(Math.random() * PAIRS.length)];
   startGame(newGame('pick', s, g));
 };
-$('playRandom').onclick = () => {
-  // WORDS から、ちがう言葉を2つ選ぶ
-  const s = WORDS[Math.floor(Math.random() * WORDS.length)];
-  let g = s;
-  while (g === s) g = WORDS[Math.floor(Math.random() * WORDS.length)];
+let picking = false;
+$('playRandom').onclick = async () => {
+  if (picking) return; // 選んでいる途中の二度押しを防ぐ
+  picking = true;
+  toast('お題を選んでいます…');
+  let s, g;
+  try {
+    // WORDS から、ちがう言葉を2つ選ぶ。1歩で着いてしまう簡単すぎる組み合わせなら選び直す（最大5回）
+    for (let tries = 0; tries < 5; tries++) {
+      s = WORDS[Math.floor(Math.random() * WORDS.length)];
+      g = s;
+      while (g === s) g = WORDS[Math.floor(Math.random() * WORDS.length)];
+      if (!(await isOneStep(s, g))) break;
+    }
+  } catch (e) { /* 調べられなかったときは、そのまま遊ぶ（記事の読み込みでエラーが出れば知らせる） */ }
+  picking = false;
   startGame(newGame('random', s, g));
 };
 
@@ -713,7 +738,7 @@ $('mCopy').onclick = () => copyText(`ウィキで6歩の挑戦状\n「${made.sta
 $('mPlay').onclick = () => startGame(newGame('friend', made.start, made.goal));
 
 renderHome();
-window.__wiki6 = { get game() { return game; }, PAIRS, WORDS, dailyPair, todayNo };
+window.__wiki6 = { get game() { return game; }, PAIRS, WORDS, dailyPair, todayNo, isOneStep };
 })();
 </script>
 </body>

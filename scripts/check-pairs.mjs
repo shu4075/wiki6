@@ -3,6 +3,7 @@
 // 使い方（wiki6 フォルダで）：
 //   node scripts/check-pairs.mjs          … 記事があるか ＋ PAIRS が簡単すぎないか
 //   node scripts/check-pairs.mjs --all    … RANDOM_PAIRS が簡単すぎないかも調べる（時間がかかる）
+//   node scripts/check-pairs.mjs --from 43 … 簡単すぎないかを43組目から調べる（途中で止まったときの再開用）
 //
 // Wikipedia に負担をかけないよう、まとめて聞ける所はまとめ、1回ごとに間をあける。
 // 「アクセスが多すぎ（429）」と言われたら、言われた時間だけ待ってやり直す。
@@ -59,8 +60,10 @@ for (const t of titles) {
 }
 if (!bad.length) console.log('記事はすべてOK');
 
-const targets = checkAll ? [...PAIRS, ...RANDOM_PAIRS] : PAIRS;
-console.log(`\n${targets.length}組が簡単すぎないか調べます（2歩の道が${MAX_ROUTES}本以下ならOK）`);
+const fromIdx = process.argv.indexOf('--from');
+const from = fromIdx > 0 ? Math.max(1, Number(process.argv[fromIdx + 1]) || 1) : 1;
+const targets = (checkAll ? [...PAIRS, ...RANDOM_PAIRS] : PAIRS).slice(from - 1);
+console.log(`\n${targets.length}組が簡単すぎないか調べます（2歩の道が${MAX_ROUTES}本以下ならOK${from > 1 ? `、${from}組目から` : ''}）`);
 for (const [s, g] of targets) {
   if (results[s].status !== 'OK' || results[g].status !== 'OK') continue;
   const r = await countRoutes(s, g);

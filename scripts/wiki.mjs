@@ -13,7 +13,14 @@ export async function api(params) {
   const u = new URL(API);
   for (const [k, v] of Object.entries({ ...params, format: 'json', formatversion: '2' })) u.searchParams.set(k, v);
   for (let tries = 0; tries < 6; tries++) {
-    const r = await fetch(u, { headers: { 'User-Agent': 'wiki6-check-pairs/1.0 (small puzzle checker; runs rarely)' } });
+    let r;
+    try { r = await fetch(u, { headers: { 'User-Agent': 'wiki6-check-pairs/1.0 (small puzzle checker; runs rarely)' } }); }
+    catch (e) {
+      // 通信が一瞬切れたときは、少し待ってやり直す
+      console.log(`  …通信が切れたので 10 秒待ってやり直します（${e.cause?.code || e.message}）`);
+      await sleep(10000);
+      continue;
+    }
     if (r.status === 429) {
       const wait = (Number(r.headers.get('retry-after')) || 30) * 1000;
       console.log(`  …アクセスが多すぎると言われたので ${wait / 1000} 秒待ちます`);

@@ -640,6 +640,13 @@ $('findList').addEventListener('click', e => {
 });
 $('findClose').onclick = () => { $('findSheet').hidden = true; };
 
+// ===== ブラウザの「戻る」やタブを閉じる対策 =====
+// 遊んでいる途中でページから離れようとしたら、ブラウザの「このページを離れますか？」を出す。
+// （iPhone の Safari など、出ないブラウザもある）
+window.addEventListener('beforeunload', e => {
+  if (game && !game.over && game.path.length > 1) { e.preventDefault(); e.returnValue = ''; }
+});
+
 // ===== もどる・やめる =====
 $('btnBack').onclick = () => {
   if (game.path.length < 2) return;

@@ -362,30 +362,37 @@ function newGame(mode, start, goal, label) {
 const steps = () => Math.max(0, game.path.length - 1);
 
 async function startGame(g) {
+  clearInterval(timerId); // 前のゲームのタイマーが残らないように
   game = g;
+  $('timer').textContent = '0:00';
+  $('article').style.opacity = '';
   show('play');
   $('article').innerHTML = '<div class="loading">お題を準備中…</div>';
   renderHud();
   try {
     const [si, gi] = await Promise.all([getInfo(game.start), getInfo(game.goal)]);
+    if (game !== g || g.over) return; // 準備中に「✕」でやめた
     if (!si || !gi) { showError(`「${!si ? game.start : game.goal}」という記事が見つかりませんでした。`); show('home'); return; }
     if (norm(si.title) === norm(gi.title)) { showError('スタートとゴールが同じ記事です。'); show('home'); return; }
     game.start = si.title; game.goal = gi.title; game.goalInfo = gi;
     openGoalSheet(true);
-  } catch (e) { showError(netErrorText(e)); show('home'); return; }
+  } catch (e) { if (game === g && !g.over) { showError(netErrorText(e)); show('home'); } return; }
   await loadPage(game.start, true);
+  if (game !== g || g.over) return;
   game.t0 = Date.now();
   clearInterval(timerId);
   timerId = setInterval(() => { if (!game.over) $('timer').textContent = fmtTime(Date.now() - game.t0); }, 500);
 }
 
 async function loadPage(title, isStart) {
+  const g = game; // 読み込みを始めたときのゲーム
   game.loading = true;
   if (isStart) $('article').innerHTML = '<div class="loading">読み込み中…</div>';
   else $('article').style.opacity = '.35';
   let page;
   try { page = await getPage(title); }
   catch (e) {
+    if (g !== game || g.over) return;
     game.loading = false;
     $('article').style.opacity = '';
     showError(netErrorText(e));
@@ -393,6 +400,8 @@ async function loadPage(title, isStart) {
     else { game.over = true; show('home'); renderHome(); }
     return;
   }
+  // 読み込み中に「✕」でやめた・別のゲームを始めたときは、届いた記事は使わない
+  if (g !== game || g.over) return;
   $('article').style.opacity = '';
   if (isStart) game.path = [page.title];
   else game.path[game.path.length - 1] = page.title; // 転送先の正式名にそろえる

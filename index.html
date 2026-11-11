@@ -162,6 +162,8 @@ input{font:inherit}
 .pair .pt small{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.05em}
 .pair .pt.g small{color:var(--goal)}
 .pair .arrow{align-self:flex-end}
+.opt{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--sub);cursor:pointer}
+.opt input{width:20px;height:20px;accent-color:var(--ink);flex:none}
 .rulebox{margin-top:12px;background:var(--linkbg);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
 .xbtn{text-decoration:none;margin-top:0!important}
 .share-note{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
@@ -209,6 +211,7 @@ input{font:inherit}
       <li>長い記事は<b>「🔍 リンクをさがす」</b>で記事の中のリンクを言葉でさがせる</li>
       <li>今日のお題は<b>1日1回</b>。結果はルートを書かずに（ネタバレなしで）シェアできる</li>
     </ul>
+    <label class="opt"><input type="checkbox" id="optConfirm"> リンクを押したとき「進む？」と確認する</label>
   </div>
   <p class="foot">記事の内容は <a href="https://ja.wikipedia.org/" target="_blank" rel="noopener">ウィキペディア日本語版</a> から読み込んでいます（CC BY-SA 4.0）。<br>このゲームは非公式のファン作品で、ウィキメディア財団とは関係ありません。</p>
 </section>
@@ -279,6 +282,7 @@ input{font:inherit}
       <button class="btn sub" id="cNo" style="margin:0">やめる</button>
       <button class="btn main" id="cYes" style="margin:0">進む</button>
     </div>
+    <label class="opt"><input type="checkbox" id="cSkip"> 次から確認しないで進む</label>
   </div>
 </div>
 
@@ -577,9 +581,13 @@ function renderHud() {
 }
 
 // ===== 進む確認 =====
+// 進む前に確認するか（初期値はオン。慣れた人はオフにできる。設定は localStorage に保存）
+const confirmOn = () => store.get('wiki6-confirm') !== false;
 function askGo(title) {
   if (game.over || game.loading) return;
+  if (!confirmOn()) { go(title); return; }
   pending = title;
+  $('cSkip').checked = false;
   const left = MAX_STEPS - steps() - 1;
   $('cTitle').textContent = title;
   $('cNote').textContent = left > 0 ? `進むと のこり${left}歩` : 'これが最後の1歩！ ゴールじゃなければ終了です';
@@ -587,7 +595,12 @@ function askGo(title) {
   $('confirmSheet').hidden = false;
 }
 $('cNo').onclick = () => { $('confirmSheet').hidden = true; pending = null; };
-$('cYes').onclick = () => { $('confirmSheet').hidden = true; if (pending) go(pending); pending = null; };
+$('cYes').onclick = () => {
+  $('confirmSheet').hidden = true;
+  if ($('cSkip').checked) { store.set('wiki6-confirm', false); toast('次から確認なしで進みます（トップでもどせます）'); }
+  if (pending) go(pending);
+  pending = null;
+};
 $('confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet') $('cNo').onclick(); });
 
 // ===== ゴールの説明 =====
@@ -721,7 +734,9 @@ function renderHome() {
   $('dailyDone').hidden = !rec;
   $('dailyDone').textContent = rec ? (rec.win ? `クリア ${rec.path.length - 1}歩` : '挑戦済み') : '';
   $('playDaily').textContent = rec ? '結果を見る' : '挑戦する';
+  $('optConfirm').checked = confirmOn();
 }
+$('optConfirm').onchange = () => store.set('wiki6-confirm', $('optConfirm').checked);
 $('playDaily').onclick = () => {
   const no = todayNo();
   const rec = store.get('wiki6-daily-' + no);

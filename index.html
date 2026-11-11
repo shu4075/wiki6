@@ -162,6 +162,8 @@ input{font:inherit}
 .pair .pt small{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.05em}
 .pair .pt.g small{color:var(--goal)}
 .pair .arrow{align-self:flex-end}
+.streak{color:#d9631e;margin-left:4px}
+.mine{font-family:var(--round);font-weight:700;font-size:14px;text-align:center;background:#fff3d6;border-radius:12px;padding:8px 14px;line-height:1.6}
 .opt{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--sub);cursor:pointer}
 .opt input{width:20px;height:20px;accent-color:var(--ink);flex:none}
 .rulebox{margin-top:12px;background:var(--linkbg);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
@@ -186,7 +188,7 @@ input{font:inherit}
   <p class="how-rule">タップできるのは<b>6回まで</b>（＝6歩）</p>
 
   <div class="card" id="dailyCard">
-    <h2><span id="dailyLabel">今日のお題</span><span id="dailyDone" class="done-badge" hidden>クリア済み</span></h2>
+    <h2><span><span id="dailyLabel">今日のお題</span> <span id="streak" class="streak" hidden></span></span><span id="dailyDone" class="done-badge" hidden>クリア済み</span></h2>
     <div class="pair"><span class="pt"><small>スタート</small><span id="dStart"></span></span><span class="arrow">→</span><span class="pt g"><small>ゴール</small><span id="dGoal"></span></span></div>
     <button class="btn main" id="playDaily">挑戦する</button>
   </div>
@@ -258,6 +260,7 @@ input{font:inherit}
   <div class="rank" id="rRank"></div>
   <div class="emoji" id="rEmoji"></div>
   <div class="tag" id="rStat"></div>
+  <div class="mine" id="rMine" hidden></div>
   <!-- シェアは目立つように、ルートより上に置く -->
   <div class="card">
     <a class="btn main xbtn" id="rX" href="#" target="_blank" rel="noopener">𝕏 でポストする</a>
@@ -683,6 +686,9 @@ function renderResult(g) {
   $('rRoute').innerHTML = html;
   $('rRetry').hidden = g.mode === 'daily';
   $('rX').href = xPostUrl(g);
+  // 今日のお題なら、自分の記録を出す
+  $('rMine').hidden = g.mode !== 'daily';
+  if (g.mode === 'daily') $('rMine').textContent = streak() >= 2 ? `🔥 ${streak()}日連続で挑戦中` : '🔥 連続記録スタート！ 明日も来てね';
   show('result');
 }
 function shareUrl(g) {
@@ -725,8 +731,20 @@ $('rRetry').onclick = () => startGame(newGame(game.mode, game.start, game.goal, 
 $('rHome').onclick = () => { show('home'); renderHome(); };
 
 // ===== トップ =====
+// 今日のお題を何日続けて遊んだか（クリアでも失敗でも「遊んだ」に数える）。
+// 今日まだ遊んでいなくても、昨日まで続いていれば途切れていない扱いにする
+function streak() {
+  const today = todayNo();
+  let n = store.get('wiki6-daily-' + today) ? today : today - 1;
+  let count = 0;
+  while (n >= 1 && store.get('wiki6-daily-' + n)) { count++; n--; }
+  return count;
+}
 function renderHome() {
   const no = todayNo();
+  const st = streak();
+  $('streak').hidden = st < 2; // 1日目は出さない
+  $('streak').textContent = `🔥${st}日連続`;
   const [s, g] = dailyPair(no);
   $('dailyLabel').textContent = `今日のお題 #${no}`;
   $('dStart').textContent = s; $('dGoal').textContent = g;

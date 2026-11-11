@@ -746,21 +746,22 @@ function shareUrl(g) {
   if (g.mode === 'daily') return base;
   return `${base}?s=${encodeURIComponent(g.start)}&g=${encodeURIComponent(g.goal)}`;
 }
-// シェアする文。例：
-//   ウィキで6歩 #3
-//   たこ焼き → ブラックホール
-//   🟦🟦🟩⬜⬜⬜
-//   3歩でゴール！⏱1:23「天才」
-//   #ウィキで6歩
-// 今日のお題以外は、見た人が同じお題で遊べるよう「同じお題で挑戦👇」を付ける（URLはお題つき）
+// シェアする文（X で広まりやすい形）。例：
+//   #ウィキで6歩 No.3 🎯3/6        ← 1行目：ゲーム名（ハッシュタグ）・何回目・成績。Wordle と同じく一目で分かる
+//   たこ焼き ➜ ブラックホール      ← 見た人が「どうやって？」と気になる、いちばんの引き
+//   🟦🟦🟩⬜⬜⬜                   ← ネタバレなしの歩数
+//   ⏱1:23「天才」
+//   あなたは何歩で行ける？          ← 問いかけで、返信や引用を誘う
+// 失敗したときは「💥X/6」と「6歩じゃ届かなかった…」。失敗の投稿も「自分なら行ける」と思わせる。
+// 今日のお題以外は、URL にお題が入るので、見た人がそのまま同じお題で遊べる。
 function shareText(g, withRoute) {
   const n = g.path.length - 1;
-  const head = g.mode === 'daily' ? `ウィキで6歩 #${g.label}` : 'ウィキで6歩';
-  const res = g.win ? `${n}歩でゴール！⏱${g.timeText || fmtTime(g.tEnd - g.t0)}「${RANKS[n]}」` : '6歩では届かなかった…';
-  let s = `${head}\n${g.start} → ${g.goal}\n${emojiLine(g)}\n${res}`;
-  if (withRoute) s += `\n\n【ルート】\n${g.path.join(' → ')}`;
-  s += '\n#ウィキで6歩';
-  if (g.mode !== 'daily') s += '\n同じお題で挑戦👇';
+  const no = g.mode === 'daily' ? ` No.${g.label}` : g.mode === 'friend' ? ' 挑戦状' : '';
+  const score = g.win ? `🎯${n}/${MAX_STEPS}` : `💥X/${MAX_STEPS}`;
+  const res = g.win ? `⏱${g.timeText || fmtTime(g.tEnd - g.t0)}「${RANKS[n]}」` : '6歩じゃ届かなかった…';
+  let s = `#ウィキで6歩${no} ${score}\n${g.start} ➜ ${g.goal}\n${emojiLine(g)}\n${res}`;
+  if (withRoute) s += `\n\n【ルート】\n${g.path.join(' ➜ ')}`;
+  s += g.win ? '\nあなたは何歩で行ける？' : '\nあなたは行ける？';
   return s;
 }
 // X の投稿画面を開くURL（文とURLが入った状態で開く。投稿するかは本人が決める）
@@ -859,11 +860,11 @@ $('mMake').onclick = async () => {
     $('mMsg').textContent = '';
     made = { start: si.title, goal: gi.title };
     $('mLink').textContent = shareUrl({ mode: 'friend', ...made });
-    $('mX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(challengeText(made) + '\n#ウィキで6歩') + '&url=' + encodeURIComponent($('mLink').textContent);
+    $('mX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(challengeText(made)) + '&url=' + encodeURIComponent($('mLink').textContent);
     $('mOut').hidden = false;
   } catch (e) { $('mMsg').style.color = ''; $('mMsg').textContent = '通信に失敗しました'; }
 };
-const challengeText = m => `ウィキで6歩の挑戦状📮\n「${m.start}」から「${m.goal}」まで、6歩で行ける？`;
+const challengeText = m => `#ウィキで6歩 の挑戦状📮\n${m.start} ➜ ${m.goal}\nリンクを6回たどって行ける？`;
 $('mCopy').onclick = () => copyText(`${challengeText(made)}\n${$('mLink').textContent}`);
 $('mPlay').onclick = () => startGame(newGame('friend', made.start, made.goal));
 

@@ -1,4 +1,4 @@
-// お題（PAIRS）の記事が日本語版Wikipediaに本当にあるか調べるスクリプト
+// お題（PAIRS）と「ランダム」用の言葉（WORDS）の記事が日本語版Wikipediaに本当にあるか調べるスクリプト
 //
 // 使い方（wiki6 フォルダで）：
 //   node scripts/check-pairs.mjs
@@ -24,6 +24,9 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const m = html.match(/const PAIRS = (\[[\s\S]*?\]);/);
 if (!m) { console.error('index.html に PAIRS が見つかりません'); process.exit(1); }
 const PAIRS = JSON.parse(m[1].replace(/'/g, '"').replace(/,\s*\]$/, ']'));
+// 「ランダム」用の WORDS も一緒に調べる（// のコメント行は読み飛ばす）
+const w = html.match(/const WORDS = (\[[\s\S]*?\]);/);
+const WORDS = w ? [...w[1].replace(/\/\/.*$/gm, '').matchAll(/'([^']+)'/g)].map(x => x[1]) : [];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -66,8 +69,8 @@ async function checkBatch(titles) {
   return out;
 }
 
-const titles = [...new Set(PAIRS.flat())];
-console.log(`${PAIRS.length}組・${titles.length}記事を調べます\n`);
+const titles = [...new Set([...PAIRS.flat(), ...WORDS])];
+console.log(`お題${PAIRS.length}組＋ランダム用${WORDS.length}語（重なりを除いて${titles.length}記事）を調べます\n`);
 
 const results = {};
 for (let i = 0; i < titles.length; i += BATCH) {

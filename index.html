@@ -159,7 +159,7 @@ input{font:inherit}
 
   <div class="row2">
     <button class="mode" id="playPick"><b>🎲 おまかせ</b><span>有名な記事どうしのお題</span></button>
-    <button class="mode" id="playRandom"><b>🌀 ランダム</b><span>完全ランダム。激ムズ</span></button>
+    <button class="mode" id="playRandom"><b>🌀 ランダム</b><span>知ってる言葉どうしをランダムに</span></button>
   </div>
   <button class="mode" style="width:100%" id="openMaker"><b>✉️ お題をつくって送る</b><span>友だちに「これ6歩で行ける？」と挑戦状を出す</span></button>
 
@@ -283,6 +283,30 @@ const PAIRS = [
   ['醤油', 'アメリカ合衆国'], ['イヌ', 'ピラミッド'], ['日本酒', 'ロケット'], ['うどん', 'ビッグバン'],
   ['東京スカイツリー', 'ニワトリ'], ['折り紙', 'ティラノサウルス'], ['カラオケ', 'ローマ帝国'], ['炬燵', 'アルベルト・アインシュタイン'],
 ];
+// 「ランダム」用の、誰でも知っている言葉。この中から2つ選んでスタートとゴールにする
+// （Wikipediaの本当のランダム記事は、ほとんど誰も知らない言葉になってしまうため）
+const WORDS = [
+  // 食べもの・飲みもの
+  'たこ焼き', 'ラーメン', '寿司', '納豆', 'カレーライス', 'コーヒー', 'チョコレート', 'アイスクリーム', 'ハンバーガー', '醤油',
+  '日本酒', 'うどん', '味噌汁', 'おにぎり', '天ぷら', 'ピザ', 'パスタ', '緑茶', 'ビール', 'ワイン', 'トマト', 'リンゴ', 'バナナ', 'イチゴ', '豆腐',
+  // 生きもの
+  'ネコ', 'イヌ', 'ペンギン', 'ジャイアントパンダ', 'ニワトリ', 'カブトムシ', 'ライオン', 'ゾウ', 'キリン', 'イルカ', 'クジラ', 'サメ',
+  'ウサギ', 'カラス', 'ミツバチ', 'アリ', 'ティラノサウルス', '恐竜', 'サクラ', 'ヒマワリ', 'タンポポ',
+  // 場所・建物
+  '富士山', '東京タワー', '東京スカイツリー', '渋谷', '京都市', '大阪市', '北海道', '沖縄県', '鹿苑寺', '厳島神社',
+  'アメリカ合衆国', 'フランス', 'イタリア', 'エジプト', 'ブラジル', 'オーストラリア', '南極大陸', 'エベレスト', 'ピラミッド', 'エッフェル塔', '万里の長城', 'アマゾン川',
+  // 宇宙・自然
+  '月', '太陽', '火星', '地球', '土星', 'ブラックホール', 'ビッグバン', '雪', '雷', '虹', '台風', '地震', '火山', '温泉',
+  // 歴史・人物
+  '織田信長', '徳川家康', '豊臣秀吉', '江戸時代', '忍者', '侍', '古代エジプト', 'ローマ帝国', '第二次世界大戦',
+  'ヴォルフガング・アマデウス・モーツァルト', 'ウィリアム・シェイクスピア', 'アルベルト・アインシュタイン', 'ナポレオン・ボナパルト', 'レオナルド・ダ・ヴィンチ', 'ビートルズ',
+  // 乗りもの・道具・技術
+  '新幹線', '自転車', '飛行機', 'ロケット', '国際宇宙ステーション', 'コンピュータ', 'インターネット', 'スマートフォン', 'ロボット', '鉛筆', '時計', '電話', 'テレビ', 'カメラ', '原子力発電',
+  // 遊び・文化・スポーツ
+  '野球', 'サッカー', '相撲', '将棋', '囲碁', '近代オリンピック', 'カラオケ', '折り紙', 'アニメーション', '漫画', 'ピアノ', 'ギター', '映画', '歌舞伎', '柔道', 'テニス', 'マラソン',
+  // くらし・学び
+  '炬燵', '和服', '傘', '学校', '病院', '図書館', '郵便', 'お金', '数学', '量子力学', '音楽', '絵画', '夏目漱石',
+];
 // 進めないリンク（記事以外のページ）
 // 「Template‐ノート:」「利用者‐会話:」のような、〜のノート（話し合いのページ）もまとめて止める
 const NS_BLOCK = /^(ファイル|画像|File|Image|Category|カテゴリ|Help|ヘルプ|Wikipedia|WP|ノート|利用者|User|Template|テンプレート|Portal|プロジェクト|特別|Special|MediaWiki|Module|モジュール|Talk|Draft|Wikt|wikt|wiktionary|commons|s|b|q|n|v|en|de|fr|zh|[^:：]*‐(?:ノート|会話))\s*[:：]/i;
@@ -330,10 +354,6 @@ async function getPage(title) {
   const j = await api({ action: 'parse', page: title, redirects: 1, prop: 'text', disableeditsection: 1, disabletoc: 1, useformat: 'desktop' });
   if (j.error) throw new Error('NOPAGE');
   return { title: j.parse.title, html: j.parse.text };
-}
-async function randomTitles(n) {
-  const j = await api({ action: 'query', list: 'random', rnnamespace: 0, rnlimit: n });
-  return j.query.random.map(r => r.title);
 }
 function netErrorText(e) {
   if (e && e.message === 'NET') return 'Wikipediaにつながりませんでした。電波を確認してください。\n※Claudeのプレビュー画面など、外部への通信が止められている場所では遊べません。GitHub Pagesなどで公開したURLから開いてください。';
@@ -652,11 +672,12 @@ $('playPick').onclick = () => {
   const [s, g] = PAIRS[Math.floor(Math.random() * PAIRS.length)];
   startGame(newGame('pick', s, g));
 };
-$('playRandom').onclick = async () => {
-  try {
-    const [s, g] = await randomTitles(2);
-    startGame(newGame('random', s, g));
-  } catch (e) { showError(netErrorText(e)); }
+$('playRandom').onclick = () => {
+  // WORDS から、ちがう言葉を2つ選ぶ
+  const s = WORDS[Math.floor(Math.random() * WORDS.length)];
+  let g = s;
+  while (g === s) g = WORDS[Math.floor(Math.random() * WORDS.length)];
+  startGame(newGame('random', s, g));
 };
 
 // 挑戦状
@@ -692,7 +713,7 @@ $('mCopy').onclick = () => copyText(`ウィキで6歩の挑戦状\n「${made.sta
 $('mPlay').onclick = () => startGame(newGame('friend', made.start, made.goal));
 
 renderHome();
-window.__wiki6 = { get game() { return game; }, PAIRS, dailyPair, todayNo };
+window.__wiki6 = { get game() { return game; }, PAIRS, WORDS, dailyPair, todayNo };
 })();
 </script>
 </body>

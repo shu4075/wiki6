@@ -135,6 +135,8 @@ input{font:inherit}
 .route .node.g{background:var(--goalbg);color:var(--goal);border-color:#bfe5cd}
 .route .node.x{background:#fdecea;color:var(--warn);border-color:#f5c6bd}
 .route .ar{color:var(--sub);font-size:14px;line-height:1}
+.xbtn{text-decoration:none;margin-top:0!important}
+.share-note{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;z-index:20;font-family:var(--round)}
 </style>
 </head>
@@ -185,6 +187,7 @@ input{font:inherit}
     <button class="btn main" id="mMake">挑戦状をつくる</button>
     <div id="mOut" hidden>
       <div class="linkbox" id="mLink"></div>
+      <a class="btn main xbtn" id="mX" href="#" target="_blank" rel="noopener" style="margin-top:10px!important">𝕏 で挑戦状をポストする</a>
       <button class="btn sub" id="mCopy">リンクをコピー</button>
       <button class="btn sub" id="mPlay">自分で試してみる</button>
     </div>
@@ -216,10 +219,15 @@ input{font:inherit}
   <div class="rank" id="rRank"></div>
   <div class="emoji" id="rEmoji"></div>
   <div class="tag" id="rStat"></div>
+  <!-- シェアは目立つように、ルートより上に置く -->
+  <div class="card">
+    <a class="btn main xbtn" id="rX" href="#" target="_blank" rel="noopener">𝕏 でポストする</a>
+    <p class="share-note">ルートは書かないので、ネタバレになりません</p>
+    <button class="btn sub" id="rShare">ほかのアプリでシェア・コピー</button>
+  </div>
   <div class="route" id="rRoute"></div>
   <div class="card">
-    <button class="btn main" id="rShare">結果をシェア（ネタバレなし）</button>
-    <button class="btn sub" id="rShareRoute">ルートつきでコピー</button>
+    <button class="btn sub" id="rShareRoute" style="margin-top:0">ルートもコピー（ネタバレ）</button>
     <button class="btn sub" id="rRetry">同じお題でもう一回</button>
     <button class="btn sub" id="rHome">トップへ</button>
   </div>
@@ -623,6 +631,7 @@ function renderResult(g) {
   if (!g.win) html += `<div class="ar">⋯</div><div class="node g">🎯 ${escapeHtml(g.goal)}</div>`;
   $('rRoute').innerHTML = html;
   $('rRetry').hidden = g.mode === 'daily';
+  $('rX').href = xPostUrl(g);
   show('result');
 }
 function shareUrl(g) {
@@ -630,13 +639,26 @@ function shareUrl(g) {
   if (g.mode === 'daily') return base;
   return `${base}?s=${encodeURIComponent(g.start)}&g=${encodeURIComponent(g.goal)}`;
 }
+// シェアする文。例：
+//   ウィキで6歩 #3
+//   たこ焼き → ブラックホール
+//   🟦🟦🟩⬜⬜⬜
+//   3歩でゴール！⏱1:23「天才」
+//   #ウィキで6歩
+// 今日のお題以外は、見た人が同じお題で遊べるよう「同じお題で挑戦👇」を付ける（URLはお題つき）
 function shareText(g, withRoute) {
   const n = g.path.length - 1;
-  const head = g.mode === 'daily' ? `ウィキで6歩 #${g.label}` : 'ウィキで6歩 チャレンジ';
-  const res = g.win ? `${n}歩でゴール ⏱${g.timeText || fmtTime(g.tEnd - g.t0)}` : '6歩では届かず…';
+  const head = g.mode === 'daily' ? `ウィキで6歩 #${g.label}` : 'ウィキで6歩';
+  const res = g.win ? `${n}歩でゴール！⏱${g.timeText || fmtTime(g.tEnd - g.t0)}「${RANKS[n]}」` : '6歩では届かなかった…';
   let s = `${head}\n${g.start} → ${g.goal}\n${emojiLine(g)}\n${res}`;
   if (withRoute) s += `\n\n【ルート】\n${g.path.join(' → ')}`;
+  s += '\n#ウィキで6歩';
+  if (g.mode !== 'daily') s += '\n同じお題で挑戦👇';
   return s;
+}
+// X の投稿画面を開くURL（文とURLが入った状態で開く。投稿するかは本人が決める）
+function xPostUrl(g) {
+  return 'https://x.com/intent/post?text=' + encodeURIComponent(shareText(g, false)) + '&url=' + encodeURIComponent(shareUrl(g));
 }
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); toast('コピーしました'); }
@@ -708,10 +730,12 @@ $('mMake').onclick = async () => {
     $('mMsg').textContent = '';
     made = { start: si.title, goal: gi.title };
     $('mLink').textContent = shareUrl({ mode: 'friend', ...made });
+    $('mX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(challengeText(made) + '\n#ウィキで6歩') + '&url=' + encodeURIComponent($('mLink').textContent);
     $('mOut').hidden = false;
   } catch (e) { $('mMsg').style.color = ''; $('mMsg').textContent = '通信に失敗しました'; }
 };
-$('mCopy').onclick = () => copyText(`ウィキで6歩の挑戦状\n「${made.start}」から「${made.goal}」まで、6歩で行ける？\n${$('mLink').textContent}`);
+const challengeText = m => `ウィキで6歩の挑戦状📮\n「${m.start}」から「${m.goal}」まで、6歩で行ける？`;
+$('mCopy').onclick = () => copyText(`${challengeText(made)}\n${$('mLink').textContent}`);
 $('mPlay').onclick = () => startGame(newGame('friend', made.start, made.goal));
 
 renderHome();

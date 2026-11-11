@@ -284,7 +284,8 @@ const PAIRS = [
   ['東京スカイツリー', 'ニワトリ'], ['折り紙', 'ティラノサウルス'], ['カラオケ', 'ローマ帝国'], ['炬燵', 'アルベルト・アインシュタイン'],
 ];
 // 進めないリンク（記事以外のページ）
-const NS_BLOCK = /^(ファイル|画像|File|Image|Category|カテゴリ|Help|ヘルプ|Wikipedia|WP|ノート|利用者|利用者‐会話|User|Template|テンプレート|Portal|プロジェクト|特別|Special|MediaWiki|Module|モジュール|Talk|Draft|Wikt|wikt|wiktionary|commons|s|b|q|n|v|en|de|fr|zh)\s*[:：]/i;
+// 「Template‐ノート:」「利用者‐会話:」のような、〜のノート（話し合いのページ）もまとめて止める
+const NS_BLOCK = /^(ファイル|画像|File|Image|Category|カテゴリ|Help|ヘルプ|Wikipedia|WP|ノート|利用者|User|Template|テンプレート|Portal|プロジェクト|特別|Special|MediaWiki|Module|モジュール|Talk|Draft|Wikt|wikt|wiktionary|commons|s|b|q|n|v|en|de|fr|zh|[^:：]*‐(?:ノート|会話))\s*[:：]/i;
 
 // ===== 便利関数 =====
 const $ = id => document.getElementById(id);

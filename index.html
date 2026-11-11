@@ -164,6 +164,7 @@ input{font:inherit}
 .pair .arrow{align-self:flex-end}
 .streak{color:#d9631e;margin-left:4px}
 .mine{font-family:var(--round);font-weight:700;font-size:14px;text-align:center;background:#fff3d6;border-radius:12px;padding:8px 14px;line-height:1.6}
+.mine small{font-weight:500;font-size:12px;color:var(--sub)}
 .opt{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--sub);cursor:pointer}
 .opt input{width:20px;height:20px;accent-color:var(--ink);flex:none}
 .rulebox{margin-top:12px;background:var(--linkbg);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
@@ -688,7 +689,11 @@ function renderResult(g) {
   $('rX').href = xPostUrl(g);
   // 今日のお題なら、自分の記録を出す
   $('rMine').hidden = g.mode !== 'daily';
-  if (g.mode === 'daily') $('rMine').textContent = streak() >= 2 ? `🔥 ${streak()}日連続で挑戦中` : '🔥 連続記録スタート！ 明日も来てね';
+  if (g.mode === 'daily') {
+    const st = streak(), my = myStats();
+    $('rMine').innerHTML = (st >= 2 ? `🔥 ${st}日連続で挑戦中` : '🔥 連続記録スタート！ 明日も来てね') +
+      `<br><small>これまで ${my.plays}回 ・ クリア率 ${my.rate}% ・ 平均 ${my.avg}</small>`;
+  }
   show('result');
 }
 function shareUrl(g) {
@@ -739,6 +744,14 @@ function streak() {
   let count = 0;
   while (n >= 1 && store.get('wiki6-daily-' + n)) { count++; n--; }
   return count;
+}
+// 今日のお題の自分の成績（この端末に保存されている分）：挑戦回数・クリア率・クリアしたときの平均歩数
+function myStats() {
+  const recs = [];
+  for (let n = todayNo(); n >= 1; n--) { const r = store.get('wiki6-daily-' + n); if (r) recs.push(r); }
+  const wins = recs.filter(r => r.win);
+  const avg = wins.length ? (wins.reduce((s, r) => s + r.path.length - 1, 0) / wins.length).toFixed(1) + '歩' : '－';
+  return { plays: recs.length, rate: recs.length ? Math.round(wins.length / recs.length * 100) : 0, avg };
 }
 function renderHome() {
   const no = todayNo();

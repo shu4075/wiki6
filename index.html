@@ -80,6 +80,9 @@ input{font:inherit}
 #article table{border-collapse:collapse;font-size:13px;line-height:1.5}
 #article td,#article th{border:1px solid var(--line);padding:4px 6px;vertical-align:top}
 #article .infobox{float:none!important;width:100%!important}
+/* 画像の枠に幅が直接書かれていて画面からはみ出すので、画面幅までにおさえる */
+#article .thumbinner,#article .thumb,#article .tsingle,#article .multiimageinner{width:auto!important;max-width:100%!important;float:none!important}
+#article .trow{flex-wrap:wrap;max-width:100%}
 #article .wl{color:var(--link);background:var(--linkbg);border-radius:4px;padding:0 2px;cursor:pointer;text-decoration:none;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 #article .wl:active{background:#cddcff}
 #article .wl.isgoal{}
@@ -312,7 +315,9 @@ async function getInfo(title) {
 }
 // 記事の本文
 async function getPage(title) {
-  const j = await api({ action: 'parse', page: title, redirects: 1, prop: 'text', disableeditsection: 1, disabletoc: 1 });
+  // useformat=desktop：スマホから読むと Wikipedia がスマホ用に作り直した本文（下のリンク表が消える）を返すので、
+  // PCと同じ本文をもらう。これでスマホでもPCでも押せるリンクが同じになる
+  const j = await api({ action: 'parse', page: title, redirects: 1, prop: 'text', disableeditsection: 1, disabletoc: 1, useformat: 'desktop' });
   if (j.error) throw new Error('NOPAGE');
   return { title: j.parse.title, html: j.parse.text };
 }

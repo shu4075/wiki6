@@ -148,6 +148,21 @@ input{font:inherit}
 .route .node.g{background:var(--goalbg);color:var(--goal);border-color:#bfe5cd}
 .route .node.x{background:#fdecea;color:var(--warn);border-color:#f5c6bd}
 .route .ar{color:var(--sub);font-size:14px;line-height:1}
+/* 遊び方の3ステップ */
+.how{display:flex;align-items:stretch;justify-content:center;gap:4px;width:100%}
+.how-step{flex:1;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 4px 9px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 2px 0 var(--line)}
+.how-step .ic{font-size:24px;line-height:32px;height:32px}
+.how-step b{font-family:var(--round);font-size:13px;line-height:1.3}
+.how-step span{font-size:11px;color:var(--sub);line-height:1.3}
+.how-ar{align-self:center;color:var(--sub);font-size:22px;font-weight:700}
+.wl-demo{color:var(--link)!important;background:var(--linkbg);border-radius:4px;padding:0 4px;font-size:14px!important;font-weight:700;font-family:var(--round)}
+.how-rule{font-family:var(--round);font-size:14px;color:var(--sub);margin-top:-8px}
+.how-rule b{color:var(--ink);background:#fff3d6;border-radius:4px;padding:0 4px}
+.pair .pt{display:flex;flex-direction:column}
+.pair .pt small{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.05em}
+.pair .pt.g small{color:var(--goal)}
+.pair .arrow{align-self:flex-end}
+.rulebox{margin-top:12px;background:var(--linkbg);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
 .xbtn{text-decoration:none;margin-top:0!important}
 .share-note{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;z-index:20;font-family:var(--round)}
@@ -158,17 +173,25 @@ input{font:inherit}
 <!-- ===== スタート ===== -->
 <section class="screen" id="home">
   <div class="logo">ウィキで<span class="six">6</span>歩</div>
-  <p class="tag">Wikipediaは6回リンクをたどれば<br>どこへでも行ける…らしい。本当に？</p>
+  <!-- 遊び方：最初に開いた人が、読まなくても一目で分かるように3つの絵で見せる -->
+  <div class="how">
+    <div class="how-step"><div class="ic">🏁</div><b>スタート</b><span>の記事から</span></div>
+    <div class="how-ar">›</div>
+    <div class="how-step"><div class="ic"><span class="wl-demo">青い字</span></div><b>リンクをタップ</b><span>して次の記事へ</span></div>
+    <div class="how-ar">›</div>
+    <div class="how-step"><div class="ic">🎯</div><b>ゴール</b><span>に着いたらクリア</span></div>
+  </div>
+  <p class="how-rule">タップできるのは<b>6回まで</b>（＝6歩）</p>
 
   <div class="card" id="dailyCard">
     <h2><span id="dailyLabel">今日のお題</span><span id="dailyDone" class="done-badge" hidden>クリア済み</span></h2>
-    <div class="pair"><span id="dStart"></span><span class="arrow">→</span><span class="g" id="dGoal"></span></div>
+    <div class="pair"><span class="pt"><small>スタート</small><span id="dStart"></span></span><span class="arrow">→</span><span class="pt g"><small>ゴール</small><span id="dGoal"></span></span></div>
     <button class="btn main" id="playDaily">挑戦する</button>
   </div>
 
   <div class="card" id="friendCard" hidden>
     <h2><span>📮 挑戦状がとどいています</span></h2>
-    <div class="pair"><span id="fStart"></span><span class="arrow">→</span><span class="g" id="fGoal"></span></div>
+    <div class="pair"><span class="pt"><small>スタート</small><span id="fStart"></span></span><span class="arrow">→</span><span class="pt g"><small>ゴール</small><span id="fGoal"></span></span></div>
     <button class="btn main" id="playFriend">受けて立つ</button>
   </div>
 
@@ -179,12 +202,12 @@ input{font:inherit}
   <button class="mode" style="width:100%" id="openMaker"><b>✉️ お題をつくって送る</b><span>友だちに「これ6歩で行ける？」と挑戦状を出す</span></button>
 
   <div class="card">
-    <h2><span>あそびかた</span></h2>
+    <h2><span>くわしいルール</span></h2>
     <ul class="rules">
-      <li>スタートの記事から、<b>青いリンク</b>だけをたどってゴールの記事を目指す</li>
-      <li>使えるのは<b>6歩（6回のリンク）</b>まで。「1歩もどる」も1歩使う</li>
-      <li>長い記事は<b>「🔍 リンクをさがす」</b>で記事の中のリンクを検索できる</li>
-      <li>たどり着いた歩数と時間を、ネタバレなしでシェアしよう</li>
+      <li>使えるのは記事の中の<b>青いリンク</b>だけ。検索や URL の入力はなし</li>
+      <li>6歩目でゴールに着かなければ終了。<b>「1歩もどる」も1歩</b>使う</li>
+      <li>長い記事は<b>「🔍 リンクをさがす」</b>で記事の中のリンクを言葉でさがせる</li>
+      <li>今日のお題は<b>1日1回</b>。結果はルートを書かずに（ネタバレなしで）シェアできる</li>
     </ul>
   </div>
   <p class="foot">記事の内容は <a href="https://ja.wikipedia.org/" target="_blank" rel="noopener">ウィキペディア日本語版</a> から読み込んでいます（CC BY-SA 4.0）。<br>このゲームは非公式のファン作品で、ウィキメディア財団とは関係ありません。</p>
@@ -264,6 +287,7 @@ input{font:inherit}
     <h3 id="gsHead">ゴールはこの記事</h3>
     <div class="big" id="gsTitle" style="color:var(--goal)"></div>
     <div class="goalcard"><img id="gsImg" alt="" hidden><p id="gsText"></p></div>
+    <p class="rulebox" id="gsRule" hidden>記事の中の<span class="wl-demo">青い字</span>をタップして進もう。<b>6回以内</b>にこの記事に着けばクリア！</p>
     <button class="btn main" id="gsOk">わかった</button>
   </div>
 </div>
@@ -574,6 +598,7 @@ function openGoalSheet(first) {
   $('gsText').textContent = gi.extract || '（説明文がありません）';
   if (gi.thumb) { $('gsImg').src = gi.thumb; $('gsImg').hidden = false; } else $('gsImg').hidden = true;
   $('gsOk').textContent = first ? 'スタート！' : 'わかった';
+  $('gsRule').hidden = !first; // 始まるときだけ、ルールをひとことで出す
   $('goalSheet').hidden = false;
 }
 $('goalChip').onclick = () => openGoalSheet(false);

@@ -1,60 +1,32 @@
-// お題（PAIRS）と「ランダム」用の言葉（WORDS）の記事が日本語版Wikipediaに本当にあるか調べるスクリプト
+// お題（PAIRS）と「ランダム」用のお題（RANDOM_PAIRS）を調べるスクリプト
 //
 // 使い方（wiki6 フォルダで）：
-//   node scripts/check-pairs.mjs
+//   node scripts/check-pairs.mjs          … 記事があるか ＋ PAIRS が簡単すぎないか
+//   node scripts/check-pairs.mjs --all    … RANDOM_PAIRS が簡単すぎないかも調べる（時間がかかる）
 //
-// index.html の中の PAIRS を読み取り、記事名を Wikipedia API に問い合わせる。
-// Wikipedia に負担をかけないよう、20件ずつまとめて聞き、1回ごとに2秒あける。
+// Wikipedia に負担をかけないよう、まとめて聞ける所はまとめ、1回ごとに間をあける。
 // 「アクセスが多すぎ（429）」と言われたら、言われた時間だけ待ってやり直す。
 //
 // 結果の見かた：
-//   OK    … そのままの名前で記事がある
-//   転送  … 別の名前に転送される。→ の右側の正式名に直すとよい
-//   曖昧  … 曖昧さ回避ページ（同じ名前のものの一覧ページ）。別の記事名にする
-//   なし  … 記事が見つからない。差し替える
-//   簡単すぎ … お題のスタートの記事にゴールへのリンクがあり、1歩で着いてしまう。差し替える
-//   （「ランダム」の組み合わせは、遊ぶときにゲームの中で同じ確認をして選び直している）
+//   OK       … そのままの名前で記事がある
+//   転送     … 別の名前に転送される。→ の右側の正式名に直すとよい
+//   曖昧     … 曖昧さ回避ページ（同じ名前のものの一覧ページ）。別の記事名にする
+//   なし     … 記事が見つからない。差し替える
+//   簡単すぎ … 1歩で着く、または2歩で着く道が4本以上ある。差し替える
+//              （2歩で着いても、道が3本以下なら見つけにくいので「難しい」として残す）
 
-import { readFileSync } from 'node:fs';
+import { api, readList, countRoutes, sleep, MAX_ROUTES } from './wiki.mjs';
 
-const API = 'https://ja.wikipedia.org/w/api.php';
 const BATCH = 20;
-const WAIT_MS = 2000;
-
-// index.html から PAIRS の部分だけを取り出す
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const m = html.match(/const PAIRS = (\[[\s\S]*?\]);/);
-if (!m) { console.error('index.html に PAIRS が見つかりません'); process.exit(1); }
-const PAIRS = JSON.parse(m[1].replace(/'/g, '"').replace(/,\s*\]$/, ']'));
-// 「ランダム」用の WORDS も一緒に調べる（// のコメント行は読み飛ばす）
-const w = html.match(/const WORDS = (\[[\s\S]*?\]);/);
-const WORDS = w ? [...w[1].replace(/\/\/.*$/gm, '').matchAll(/'([^']+)'/g)].map(x => x[1]) : [];
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function api(params) {
-  const u = new URL(API);
-  for (const [k, v] of Object.entries({ ...params, format: 'json', formatversion: '2' })) u.searchParams.set(k, v);
-  for (let tries = 0; tries < 5; tries++) {
-    const r = await fetch(u, { headers: { 'User-Agent': 'wiki6-check-pairs/1.0 (small puzzle checker; runs rarely)' } });
-    if (r.status === 429) {
-      const wait = (Number(r.headers.get('retry-after')) || 30) * 1000;
-      console.log(`  …アクセスが多すぎると言われたので ${wait / 1000} 秒待ちます`);
-      await sleep(wait);
-      continue;
-    }
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  }
-  throw new Error('何度やっても 429 でした。しばらく時間をおいてください');
-}
+const PAIRS = readList('PAIRS') || [];
+const RANDOM_PAIRS = readList('RANDOM_PAIRS') || [];
+const checkAll = process.argv.includes('--all');
 
 // 記事名のまとまりを調べて、{ 元の名前: { status, title } } を返す
 async function checkBatch(titles) {
   const j = await api({ action: 'query', titles: titles.join('|'), redirects: 1, prop: 'pageprops', ppprop: 'disambiguation' });
   const q = j.query;
-  const rename = new Map();
-  for (const n of q.normalized || []) rename.set(n.from, n.to);
+  const rename = new Map((q.normalized || []).map(n => [n.from, n.to]));
   const redirect = new Map((q.redirects || []).map(r => [r.from, r.to]));
   const pages = new Map(q.pages.map(p => [p.title, p]));
   const out = {};
@@ -71,45 +43,32 @@ async function checkBatch(titles) {
   return out;
 }
 
-const titles = [...new Set([...PAIRS.flat(), ...WORDS])];
-console.log(`お題${PAIRS.length}組＋ランダム用${WORDS.length}語（重なりを除いて${titles.length}記事）を調べます\n`);
-
+const titles = [...new Set([...PAIRS.flat(), ...RANDOM_PAIRS.flat()])];
+console.log(`お題${PAIRS.length}組＋ランダム用${RANDOM_PAIRS.length}組（記事${titles.length}個）があるか調べます\n`);
 const results = {};
 for (let i = 0; i < titles.length; i += BATCH) {
   Object.assign(results, await checkBatch(titles.slice(i, i + BATCH)));
-  if (i + BATCH < titles.length) await sleep(WAIT_MS);
+  await sleep(2000);
 }
-
 const bad = [];
 for (const t of titles) {
   const res = results[t];
-  const line = res.status === 'OK' ? `OK    ${t}` : `${res.status}  ${t}${res.title ? ' → ' + res.title : ''}`;
-  console.log(line);
-  if (res.status !== 'OK') bad.push(line);
+  if (res.status === 'OK') continue;
+  const line = `${res.status}  ${t}${res.title ? ' → ' + res.title : ''}`;
+  console.log(line); bad.push(line);
+}
+if (!bad.length) console.log('記事はすべてOK');
+
+const targets = checkAll ? [...PAIRS, ...RANDOM_PAIRS] : PAIRS;
+console.log(`\n${targets.length}組が簡単すぎないか調べます（2歩の道が${MAX_ROUTES}本以下ならOK）`);
+for (const [s, g] of targets) {
+  if (results[s].status !== 'OK' || results[g].status !== 'OK') continue;
+  const r = await countRoutes(s, g);
+  const what = r.n < 0 ? '1歩で着く' : r.n > MAX_ROUTES ? `2歩の道が${r.n}本以上` : `2歩の道${r.n}本${r.n ? '（' + r.via.join('・') + '）' : ''}`;
+  if (r.n < 0 || r.n > MAX_ROUTES) { const line = `簡単すぎ  ${s} → ${g}（${what}）`; console.log(line); bad.push(line); }
+  else console.log(`OK  ${s} → ${g}（${what}）`);
+  await sleep(1000);
 }
 
-// お題が簡単すぎないか：スタートの記事にゴールへの直接リンク（転送ページへのリンクも含む）があると1歩で着いてしまう
-// 組ごとに2〜4回問い合わせるので、1組ごとに2秒あける
-async function isOneStep(start, goal) {
-  const r = await api({ action: 'query', titles: goal, redirects: 1, prop: 'redirects', rdnamespace: 0, rdlimit: 'max' });
-  const p = r.query.pages[0];
-  if (!p || p.missing) return false;
-  const names = [p.title, ...(p.redirects || []).map(x => x.title)];
-  for (let i = 0; i < names.length && i < 150; i += 50) {
-    const j = await api({ action: 'query', titles: start, redirects: 1, prop: 'links', plnamespace: 0, pllimit: 'max', pltitles: names.slice(i, i + 50).join('|') });
-    const s = j.query.pages[0];
-    if (s && s.links && s.links.length) return true;
-  }
-  return false;
-}
-console.log(`\nお題${PAIRS.length}組が簡単すぎないか（1歩で着かないか）調べます`);
-for (const [s, g] of PAIRS) {
-  if (results[s].status !== 'OK' || results[g].status !== 'OK') continue;
-  if (await isOneStep(s, g)) {
-    const line = `簡単すぎ  ${s} → ${g}（1歩で着く）`;
-    console.log(line); bad.push(line);
-  }
-  await sleep(WAIT_MS);
-}
 console.log('\n' + (bad.length ? `直したほうがいいもの：${bad.length}件\n` + bad.join('\n') : 'すべてOK！'));
 process.exit(bad.length ? 1 : 0);

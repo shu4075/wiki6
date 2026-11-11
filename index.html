@@ -169,6 +169,7 @@ input{font:inherit}
 .opt input{width:20px;height:20px;accent-color:var(--ink);flex:none}
 .rulebox{margin-top:12px;background:var(--linkbg);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6}
 .xbtn{text-decoration:none;margin-top:0!important}
+.feedback{font-family:var(--round);font-weight:700;font-size:14px;color:var(--sub);text-decoration:none;border:1px dashed var(--line);border-radius:99px;padding:10px 16px;text-align:center}
 .share-note{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;z-index:20;font-family:var(--round)}
 </style>
@@ -216,6 +217,7 @@ input{font:inherit}
     </ul>
     <label class="opt"><input type="checkbox" id="optConfirm"> リンクを押したとき「進む？」と確認する</label>
   </div>
+  <a class="feedback" id="hFeedback" href="#" target="_blank" rel="noopener">💬 感想・お題のアイデアを送る</a>
   <p class="foot">記事の内容は <a href="https://ja.wikipedia.org/" target="_blank" rel="noopener">ウィキペディア日本語版</a> から読み込んでいます（CC BY-SA 4.0）。<br>このゲームは非公式のファン作品で、ウィキメディア財団とは関係ありません。</p>
 </section>
 
@@ -274,6 +276,7 @@ input{font:inherit}
     <button class="btn sub" id="rRetry">同じお題でもう一回</button>
     <button class="btn sub" id="rHome">トップへ</button>
   </div>
+  <a class="feedback" id="rFeedback" href="#" target="_blank" rel="noopener">💬 感想・難しすぎたお題・表示のおかしい所を送る</a>
 </section>
 
 <!-- ===== シート ===== -->
@@ -732,6 +735,7 @@ function renderResult(g) {
   $('rRoute').innerHTML = html;
   $('rRetry').hidden = g.mode === 'daily';
   $('rX').href = xPostUrl(g);
+  $('rFeedback').href = feedbackUrl(`お題：${g.start} ➜ ${g.goal}\n`);
   // 今日のお題なら、自分の記録を出す
   $('rMine').hidden = g.mode !== 'daily';
   if (g.mode === 'daily') {
@@ -768,6 +772,12 @@ function shareText(g, withRoute) {
 function xPostUrl(g) {
   return 'https://x.com/intent/post?text=' + encodeURIComponent(shareText(g, false)) + '&url=' + encodeURIComponent(shareUrl(g));
 }
+// 感想を送る：X の投稿画面を「#ウィキで6歩 への感想」入りで開く。
+// しゅうは X で「#ウィキで6歩 感想」を検索すれば、届いた感想をまとめて読める（サーバー不要）
+function feedbackUrl(extra) {
+  return 'https://x.com/intent/post?text=' + encodeURIComponent(`#ウィキで6歩 への感想\n${extra || ''}`);
+}
+$('hFeedback').href = feedbackUrl();
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); toast('コピーしました'); }
   catch (e) { showError('コピーできませんでした。下の文を長押しでコピーしてください。\n\n' + text); }
